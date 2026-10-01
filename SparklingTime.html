@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SparklingTime</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap">
+<style>
+/* ===== 1. COLORS (change these to restyle everything!) ===== */
+:root{
+  --bg:#ffe3ee; --card:#ffffff; --ink:#111111; --pink:#ff8fb8; --pink2:#e0558a; --sand:#ff7eb3; --glass:rgba(255,255,255,.7);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#1c0f15;--card:#000;--ink:#fff;--pink:#ff8fb8;--pink2:#ff6fa5;--sand:#ff7eb3;--glass:rgba(255,255,255,.12)}
+}
+:root[data-theme="dark"]{--bg:#1c0f15;--card:#000;--ink:#fff;--pink:#ff8fb8;--pink2:#ff6fa5;--sand:#ff7eb3;--glass:rgba(255,255,255,.12)}
+
+/* ===== 2. LAYOUT & PAGES ===== */
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Fredoka','Comic Sans MS',ui-rounded,sans-serif;
+  display:grid;place-items:center;overflow-x:hidden}
+.page{display:none;text-align:center;background:var(--card);border:3px solid var(--ink);border-radius:36px;
+  padding:26px 22px 30px;width:min(92vw,380px);box-shadow:0 10px 0 var(--pink),0 10px 0 3px var(--ink);position:relative;z-index:1}
+.page.active{display:block;animation:pop .4s ease}
+h1{font-size:1.6rem;margin:0 0 6px}
+.time{font-size:3rem;font-weight:600;letter-spacing:2px}
+svg{width:170px;max-width:60%;display:block;margin:6px auto}
+
+/* ===== 3. BUTTONS & INPUTS ===== */
+.row{display:flex;gap:10px;justify-content:center;align-items:center;margin:12px 0;flex-wrap:wrap}
+button{font:inherit;font-weight:600;border:2px solid var(--ink);border-radius:999px;padding:10px 26px;cursor:pointer;
+  background:var(--pink);color:#111;box-shadow:0 4px 0 var(--ink);transition:transform .1s}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+button.round{width:38px;height:38px;padding:0;font-size:1.2rem}
+input{font:inherit;font-size:1.6rem;width:4rem;text-align:center;border:3px solid var(--ink);border-radius:18px;
+  padding:8px;background:transparent;color:var(--ink)}
+label{display:flex;flex-direction:column;font-size:.9rem;gap:4px}
+
+/* ===== 4. HAMBURGER MENU (top right, page 2 only) ===== */
+#menuWrap{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));right:14px;z-index:5;display:none}
+#menuWrap.show{display:block}
+#burger{width:46px;height:46px;padding:0;font-size:1.4rem;background:var(--card);color:var(--ink)}
+#menu{display:none;position:absolute;right:0;top:54px;background:var(--card);border:2px solid var(--ink);
+  border-radius:20px;padding:10px;gap:8px;flex-direction:column;box-shadow:0 4px 0 var(--pink)}
+#menu.open{display:flex}
+#menu button{width:120px;padding:8px}
+
+/* ===== 5. ANIMATIONS ===== */
+#stream{stroke-dasharray:4 5;animation:fall .4s linear infinite}
+@keyframes fall{to{stroke-dashoffset:-9}}
+@keyframes pop{from{transform:scale(.3);opacity:0}70%{transform:scale(1.1)}to{transform:scale(1);opacity:1}}
+.sp{position:fixed;font-size:1.6rem;animation:float 7s ease-in-out infinite;opacity:.8}
+@keyframes float{50%{transform:translateY(-24px) rotate(15deg)}}
+
+/* ===== 6. OVERLAYS (3-2-1, time's up, black screen) ===== */
+.ov{position:fixed;inset:0;display:none;place-items:center;z-index:10;text-align:center;padding:24px;
+  background:color-mix(in srgb,var(--bg) 92%,transparent)}
+.ov.show{display:grid}
+#black{background:#000;z-index:20}
+.big{font-size:clamp(5rem,28vw,9rem);font-weight:600}
+.msg{font-size:clamp(1.8rem,8vw,3rem);font-weight:600}
+.pop{animation:pop .5s ease}
+.quote{font-size:1.5rem;line-height:1.4;margin:10px 0 16px}
+.small{font-size:.85rem;opacity:.7}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<span class="sp" style="left:8%;top:12%">💖</span>
+<span class="sp" style="right:10%;top:22%;animation-delay:1s">✨</span>
+<span class="sp" style="left:14%;bottom:14%;animation-delay:2s">🎀</span>
+<span class="sp" style="right:12%;bottom:10%;animation-delay:3s">🌸</span>
+
+<!-- PAGE 1: set the time -->
+<main class="page active" id="p1">
+  <h1>SparklingTime ✨</h1>
+  <p class="small">How long shall we sparkle?</p>
+  <div class="row">
+    <label>min <input id="mm" type="number" min="0" max="99" value="5"></label>
+    <label>sec <input id="ss" type="number" min="0" max="59" value="0"></label>
+  </div>
+  <div class="row"><button id="start">Start</button></div>
+</main>
+
+<!-- PAGE 2: the hourglass -->
+<main class="page" id="p2">
+  <svg id="glass" viewBox="0 0 200 300" aria-label="Hourglass">
+    <defs><clipPath id="clip"><path d="M40 20H160C160 90 118 120 108 150C118 180 160 210 160 280H40C40 210 82 180 92 150C82 120 40 90 40 20Z"/></clipPath></defs>
+    <path d="M40 20H160C160 90 118 120 108 150C118 180 160 210 160 280H40C40 210 82 180 92 150C82 120 40 90 40 20Z" fill="var(--glass)"/>
+    <g clip-path="url(#clip)">
+      <rect id="top" x="0" width="200" fill="var(--sand)"/>
+      <rect id="bot" x="0" width="200" fill="var(--sand)"/>
+      <line id="stream" x1="100" x2="100" y1="150" stroke="var(--sand)" stroke-width="3"/>
+    </g>
+    <path d="M40 20H160C160 90 118 120 108 150C118 180 160 210 160 280H40C40 210 82 180 92 150C82 120 40 90 40 20Z" fill="none" stroke="var(--ink)" stroke-width="6" stroke-linejoin="round"/>
+    <rect x="28" y="8" width="144" height="14" rx="7" fill="var(--ink)"/>
+    <rect x="28" y="278" width="144" height="14" rx="7" fill="var(--ink)"/>
+  </svg>
+  <div class="time" id="time">05:00</div>
+  <div class="row">
+    <button class="round" id="minus" title="Remove 1 minute">−</button>
+    <span class="small">1 min</span>
+    <button class="round" id="plus" title="Add 1 minute">+</button>
+  </div>
+</main>
+
+<!-- PAGE 3: the quote -->
+<main class="page" id="p3">
+  <h1>💖 Well done! 💖</h1>
+  <div class="quote" id="quote"></div>
+  <p class="small">Heading back to the start in a moment...</p>
+</main>
+
+<!-- Three-line menu (only visible on page 2) -->
+<div id="menuWrap">
+  <button id="burger" aria-label="Menu">☰</button>
+  <div id="menu">
+    <button id="pause">Pause</button>
+    <button id="reset">Reset</button>
+  </div>
+</div>
+
+<div class="ov" id="ov"></div>
+<div class="ov" id="black"></div>
+
+<script>
+// ===== STATE =====
+let state = 'idle';          // idle | countin | running | paused | done
+let total = 300, remaining = 300000, endAt = 0, raf = 0, token = 0;
+let audioCtx = null;
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+const QUOTES = [
+  "Small steps still count. Tiny sparkle, big progress. ✨",
+  "Start before you feel ready. The pink energy comes later. 🌸",
+  "One focused round beats ten distracted hours.",
+  "Your future self is cheering for the work you do now. 🎀",
+  "Do the next little thing, then the next one.",
+  "Rest is part of the plan. So is starting again. 💖"
+];
+
+// ===== PAGES: show only one at a time =====
+function go(id){
+  ['p1','p2','p3'].forEach(p => $(p).classList.toggle('active', p === id));
+  $('menuWrap').classList.toggle('show', id === 'p2');
+  $('menu').classList.remove('open');
+}
+
+// ===== DING SOUND (made with code, no audio file needed) =====
+function ding(){
+  if (!audioCtx) return;
+  [880, 1320].forEach((freq, i) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(i ? 0.15 : 0.35, audioCtx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.6);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 1.7);
+  });
+}
+
+// ===== DRAWING =====
+function fmt(ms){
+  const s = Math.ceil(ms / 1000);
+  return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+function draw(){
+  const p = total ? Math.max(0, Math.min(1, remaining / (total * 1000))) : 1;
+  const f = 1 - p;
+  $('top').setAttribute('y', 150 - p * 130); $('top').setAttribute('height', p * 130);
+  $('bot').setAttribute('y', 280 - f * 130); $('bot').setAttribute('height', f * 130);
+  $('stream').setAttribute('y2', 280 - f * 130);
+  $('stream').style.display = (state === 'running' && p > 0) ? 'block' : 'none';
+  $('time').textContent = fmt(remaining);
+}
+function readInputs(){
+  const m = Math.min(99, Math.max(0, parseInt($('mm').value) || 0));
+  const s = Math.min(59, Math.max(0, parseInt($('ss').value) || 0));
+  total = m * 60 + s; remaining = total * 1000; draw();
+}
+
+// ===== + / - (page 2) =====
+function adjust(delta){
+  if (state === 'countin' || state === 'done') return;
+  if (remaining + delta * 1000 < 5000 || total + delta > 5999) return;
+  total += delta; remaining += delta * 1000;
+  if (state === 'running') endAt += delta * 1000;
+  draw();
+}
+
+// ===== OVERLAYS =====
+function say(html){ const o = $('ov'); o.innerHTML = html; o.classList.add('show'); }
+function hideAll(){ $('ov').classList.remove('show'); $('black').classList.remove('show'); }
+
+// ===== START: page 1 -> page 2, 3-2-1, run =====
+async function start(){
+  if (state !== 'idle') return;
+  readInputs();
+  if (total <= 0){ $('mm').focus(); return; }
+  // sound must be unlocked by a click, so we create it here
+  try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch(e){}
+  state = 'countin'; go('p2'); draw();
+  const my = ++token;
+  const steps = ['3', '2', '1', 'Your time starts now! ✨'];
+  for (let i = 0; i < steps.length; i++){
+    say(`<div class="pop ${i < 3 ? 'big' : 'msg'}">${steps[i]}</div>`);
+    await sleep(i < 3 ? 850 : 1200);
+    if (my !== token) return;
+  }
+  hideAll(); run();
+}
+
+function run(){
+  state = 'running'; endAt = Date.now() + remaining;
+  const loop = () => {
+    remaining = endAt - Date.now();
+    if (remaining <= 0){ finish(); return; }
+    draw(); raf = requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+function togglePause(){
+  if (state === 'running'){
+    cancelAnimationFrame(raf); remaining = endAt - Date.now();
+    state = 'paused'; $('pause').textContent = 'Resume'; draw();
+  } else if (state === 'paused'){
+    $('pause').textContent = 'Pause'; run();
+  }
+  $('menu').classList.remove('open');
+}
+
+function reset(){
+  token++; cancelAnimationFrame(raf); hideAll();
+  state = 'idle'; $('pause').textContent = 'Pause';
+  readInputs(); go('p1');
+}
+
+// ===== THE END: ding + cute message -> black 0.5s -> quote page -> back to page 1 =====
+async function finish(){
+  state = 'done'; remaining = 0; draw();
+  const my = ++token;
+  ding();
+  say(`<div class="pop msg">Ta-da! Time's up, sparkle bean! 🎀<br>The sand has tumbled home. ✨</div>`);
+  await sleep(2400); if (my !== token) return;
+  $('ov').classList.remove('show'); $('black').classList.add('show');
+  await sleep(500); if (my !== token) return;
+  $('quote').textContent = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  go('p3'); $('black').classList.remove('show');
+  await sleep(5000); if (my !== token) return;
+  reset();
+}
+
+// ===== WIRING =====
+$('start').onclick = start;
+$('pause').onclick = togglePause;
+$('reset').onclick = reset;
+$('plus').onclick = () => adjust(60);
+$('minus').onclick = () => adjust(-60);
+$('burger').onclick = () => $('menu').classList.toggle('open');
+readInputs();
+</script>
+</body>
+</html>
